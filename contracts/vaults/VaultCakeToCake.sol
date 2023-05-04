@@ -33,7 +33,7 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 import "../interfaces/IStrategy.sol";
@@ -44,12 +44,12 @@ import {PoolConstant} from "../library/PoolConstant.sol";
 
 
 contract VaultCakeToCake is VaultController, IStrategy {
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
 
     /* ========== CONSTANTS ============= */
 
-    IBEP20 private constant CAKE = IBEP20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
+    IERC20 private constant CAKE = IERC20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     IMasterChef private constant CAKE_MASTER_CHEF = IMasterChef(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
 
     uint public constant override pid = 0;
@@ -66,8 +66,8 @@ contract VaultCakeToCake is VaultController, IStrategy {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __VaultController_init(CAKE);
+    constructor() public {
+        setStakingToken(address(CAKE));
         CAKE.safeApprove(address(CAKE_MASTER_CHEF), uint(- 1));
 
         setMinter(0x8cB88701790F650F273c8BB2Cc4c5f439cd65219);
@@ -278,7 +278,7 @@ contract VaultCakeToCake is VaultController, IStrategy {
 
     // @dev _stakingToken(CAKE) must not remain balance in this contract. So dev should be able to salvage staking token transferred by mistake.
     function recoverToken(address _token, uint amount) virtual external override onlyOwner {
-        IBEP20(_token).safeTransfer(owner(), amount);
+        IERC20(_token).safeTransfer(owner(), amount);
 
         emit Recovered(_token, amount);
     }

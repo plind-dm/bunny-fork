@@ -2,15 +2,15 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "../library/WhitelistUpgradeable.sol";
-import "../library/PausableUpgradeable.sol";
+import "../library/Whitelist.sol";
 import "../library/SortitionSumTreeFactory.sol";
 
 import "../interfaces/IPotController.sol";
 import "../interfaces/IRNGenerator.sol";
+import "../library/Pausable.sol";
 
 
-contract PotController is IPotController, PausableUpgradeable, WhitelistUpgradeable {
+contract PotController is IPotController, Pausable, Whitelist {
     using SortitionSumTreeFactory for SortitionSumTreeFactory.SortitionSumTrees;
 
     /* ========== CONSTANT ========== */

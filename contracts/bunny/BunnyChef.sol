@@ -33,20 +33,19 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import '@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol';
-import '@pancakeswap/pancake-swap-lib/contracts/token/BEP20/IBEP20.sol';
-import '@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol';
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import '@openzeppelin/contracts/math/SafeMath.sol';
+import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+
+import '@openzeppelin/contracts/access/Ownable.sol';
 
 import "../interfaces/IBunnyMinterV2.sol";
 import "../interfaces/IBunnyChef.sol";
 import "../interfaces/IStrategy.sol";
 import "./BunnyToken.sol";
 
-
-contract BunnyChef is IBunnyChef, OwnableUpgradeable {
+contract BunnyChef is IBunnyChef, Ownable {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -93,9 +92,7 @@ contract BunnyChef is IBunnyChef, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(uint _startBlock, uint _bunnyPerBlock) external initializer {
-        __Ownable_init();
-
+    constructor(uint _startBlock, uint _bunnyPerBlock) public {
         startBlock = _startBlock;
         bunnyPerBlock = _bunnyPerBlock;
     }
@@ -219,6 +216,6 @@ contract BunnyChef is IBunnyChef, OwnableUpgradeable {
 
     function recoverToken(address _token, uint amount) virtual external onlyOwner {
         require(_token != address(BUNNY), "BunnyChef: cannot recover BUNNY token");
-        IBEP20(_token).safeTransfer(owner(), amount);
+        IERC20(_token).safeTransfer(owner(), amount);
     }
 }

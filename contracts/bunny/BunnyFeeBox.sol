@@ -34,9 +34,9 @@ pragma experimental ABIEncoderV2;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "../library/WhitelistUpgradeable.sol";
+import "../library/Whitelist.sol";
 import "../library/SafeToken.sol";
 
 import "../interfaces/IBunnyPool.sol";
@@ -44,8 +44,8 @@ import "../interfaces/ISafeSwapBNB.sol";
 import "../interfaces/IZap.sol";
 
 
-contract BunnyFeeBox is WhitelistUpgradeable {
-    using SafeBEP20 for IBEP20;
+contract BunnyFeeBox is Whitelist {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -96,8 +96,7 @@ contract BunnyFeeBox is WhitelistUpgradeable {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __WhitelistUpgradeable_init();
+    constructor() public {
     }
 
     /* ========== VIEWS ========== */
@@ -112,8 +111,8 @@ contract BunnyFeeBox is WhitelistUpgradeable {
 
     function pendingRewards() public view returns (uint bnb, uint cake, uint bunny) {
         bnb = address(this).balance;
-        cake = IBEP20(CAKE).balanceOf(address(this));
-        bunny = IBEP20(BUNNY).balanceOf(address(this));
+        cake = IERC20(CAKE).balanceOf(address(this));
+        bunny = IERC20(BUNNY).balanceOf(address(this));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -132,12 +131,12 @@ contract BunnyFeeBox is WhitelistUpgradeable {
         address[] memory _tokens = IBunnyPool(bunnyPool).rewardTokens();
         uint[] memory _amounts = new uint[](_tokens.length);
         for (uint i = 0; i < _tokens.length; i++) {
-            uint _amount = _tokens[i] == WBNB ? address(this).balance : IBEP20(_tokens[i]).balanceOf(address(this));
+            uint _amount = _tokens[i] == WBNB ? address(this).balance : IERC20(_tokens[i]).balanceOf(address(this));
             if (_amount > 0) {
                 if (_tokens[i] == WBNB) {
                     SafeToken.safeTransferETH(bunnyPool, _amount);
                 } else {
-                    IBEP20(_tokens[i]).safeTransfer(bunnyPool, _amount);
+                    IERC20(_tokens[i]).safeTransfer(bunnyPool, _amount);
                 }
             }
             _amounts[i] = _amount;
@@ -151,7 +150,7 @@ contract BunnyFeeBox is WhitelistUpgradeable {
 
         address[8] memory _tokens = redundantTokens();
         for (uint i = 0; i < _tokens.length; i++) {
-            _convertToken(_tokens[i], IBEP20(_tokens[i]).balanceOf(address(this)));
+            _convertToken(_tokens[i], IERC20(_tokens[i]).balanceOf(address(this)));
         }
 
         swapToRewards();
@@ -160,7 +159,7 @@ contract BunnyFeeBox is WhitelistUpgradeable {
     function splitPairs() public onlyKeeper {
         address[12] memory _flips = flips();
         for (uint i = 0; i < _flips.length; i++) {
-            _convertToken(_flips[i], IBEP20(_flips[i]).balanceOf(address(this)));
+            _convertToken(_flips[i], IERC20(_flips[i]).balanceOf(address(this)));
         }
     }
 
@@ -173,10 +172,10 @@ contract BunnyFeeBox is WhitelistUpgradeable {
     /* ========== PRIVATE FUNCTIONS ========== */
 
     function _convertToken(address token, uint amount) private {
-        uint balance = IBEP20(token).balanceOf(address(this));
+        uint balance = IERC20(token).balanceOf(address(this));
         if (amount > 0 && balance >= amount) {
-            if (IBEP20(token).allowance(address(this), address(zapBSC)) == 0) {
-                IBEP20(token).approve(address(zapBSC), uint(- 1));
+            if (IERC20(token).allowance(address(this), address(zapBSC)) == 0) {
+                IERC20(token).approve(address(zapBSC), uint(- 1));
             }
             zapBSC.zapOut(token, amount);
         }
@@ -184,10 +183,10 @@ contract BunnyFeeBox is WhitelistUpgradeable {
 
     // @dev use when WBNB received from minter
     function _unwrap(uint amount) private {
-        uint balance = IBEP20(WBNB).balanceOf(address(this));
+        uint balance = IERC20(WBNB).balanceOf(address(this));
         if (amount > 0 && balance >= amount) {
-            if (IBEP20(WBNB).allowance(address(this), address(safeSwapBNB)) == 0) {
-                IBEP20(WBNB).approve(address(safeSwapBNB), uint(-1));
+            if (IERC20(WBNB).allowance(address(this), address(safeSwapBNB)) == 0) {
+                IERC20(WBNB).approve(address(safeSwapBNB), uint(-1));
             }
 
             safeSwapBNB.withdraw(amount);

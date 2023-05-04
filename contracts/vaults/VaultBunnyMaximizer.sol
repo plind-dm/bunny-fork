@@ -35,10 +35,9 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import {PoolConstant} from "../library/PoolConstant.sol";
 
@@ -50,9 +49,9 @@ import "../interfaces/IZap.sol";
 
 import "./VaultController.sol";
 
-contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgradeable {
+contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuard {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -83,10 +82,8 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __VaultController_init(IBEP20(BUNNY));
-        __ReentrancyGuard_init();
-
+    constructor() public {
+        setStakingToken(BUNNY);
         setMinter(0x8cB88701790F650F273c8BB2Cc4c5f439cd65219);
     }
 
@@ -176,9 +173,9 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
 
     function harvest() public override onlyKeeper {
         require(_bunnyPool != address(0), "VaultBunnyMaximizer: BunnyPool must set");
-        uint before = IBEP20(BUNNY).balanceOf(address(this));
+        uint before = IERC20(BUNNY).balanceOf(address(this));
         uint beforeBNB = address(this).balance;
-        uint beforeCAKE = IBEP20(CAKE).balanceOf(address(this));
+        uint beforeCAKE = IERC20(CAKE).balanceOf(address(this));
 
         IBunnyPool(_bunnyPool).getReward(); // BNB, CAKE, BUNNY
 
@@ -186,11 +183,11 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
             zap.zapIn{ value: address(this).balance.sub(beforeBNB) }(BUNNY);
         }
 
-        if (IBEP20(CAKE).balanceOf(address(this)).sub(beforeCAKE) > 0) {
-            zap.zapInToken(CAKE, IBEP20(CAKE).balanceOf(address(this)).sub(beforeCAKE), BUNNY);
+        if (IERC20(CAKE).balanceOf(address(this)).sub(beforeCAKE) > 0) {
+            zap.zapInToken(CAKE, IERC20(CAKE).balanceOf(address(this)).sub(beforeCAKE), BUNNY);
         }
 
-        uint harvested = IBEP20(BUNNY).balanceOf(address(this)).sub(before);
+        uint harvested = IERC20(BUNNY).balanceOf(address(this)).sub(before);
         emit Harvested(harvested);
 
         IBunnyPool(_bunnyPool).deposit(harvested);
@@ -255,8 +252,8 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
         _bunnyPool = bunnyPool;
 
         _stakingToken.approve(_bunnyPool, uint(-1));
-        if (IBEP20(CAKE).allowance(address(this), address(zap)) == 0) {
-            IBEP20(CAKE).approve(address(zap), uint(-1));
+        if (IERC20(CAKE).allowance(address(this), address(zap)) == 0) {
+            IERC20(CAKE).approve(address(zap), uint(-1));
         }
     }
 
@@ -280,7 +277,7 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
     /* ========== SALVAGE PURPOSE ONLY ========== */
 
     function recoverToken(address tokenAddress, uint tokenAmount) external override onlyOwner {
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 
@@ -288,11 +285,11 @@ contract VaultBunnyMaximizer is VaultController, IStrategy, ReentrancyGuardUpgra
 
     function migrate() external onlyOwner {
         require(_bunnyPool != address(0), "VaultBunnyMaximizer: must set BunnyPool");
-        uint before = IBEP20(BUNNY).balanceOf(address(this));
+        uint before = IERC20(BUNNY).balanceOf(address(this));
         IBunnyPool(BUNNY_POOL_V1).withdrawAll();   // get BUNNY, WBNB
 
-        zap.zapInToken(WBNB, IBEP20(WBNB).balanceOf(address(this)), BUNNY);
-        IBunnyPool(_bunnyPool).deposit(IBEP20(BUNNY).balanceOf(address(this)).sub(before));
+        zap.zapInToken(WBNB, IERC20(WBNB).balanceOf(address(this)), BUNNY);
+        IBunnyPool(_bunnyPool).deposit(IERC20(BUNNY).balanceOf(address(this)).sub(before));
     }
 
 }

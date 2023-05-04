@@ -33,20 +33,18 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IBunnyMinter.sol";
 import "../interfaces/IBunnyChef.sol";
 import "../interfaces/IPriceCalculator.sol";
-
 import "../vaults/BunnyPool.sol";
 import "../vaults/venus/VaultVenus.sol";
 import "../vaults/relay/VaultRelayer.sol";
+import "../library/SafeDecimal.sol";
 
-
-contract DashboardBSC is OwnableUpgradeable {
+contract DashboardBSC is Ownable {
     using SafeMath for uint;
     using SafeDecimal for uint;
 
@@ -69,8 +67,7 @@ contract DashboardBSC is OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public Ownable() {
     }
 
     /* ========== Restricted Operation ========== */

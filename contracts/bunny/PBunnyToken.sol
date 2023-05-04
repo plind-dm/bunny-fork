@@ -32,15 +32,14 @@ pragma solidity ^0.6.12;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "../library/bep20/BEP20Upgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-
-contract PBunnyToken is BEP20Upgradeable {
+contract PBunnyToken is ERC20, Ownable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __BEP20__init("Platinum Bunny Token", "pBUNNY", 18);
+    constructor() public ERC20("Platinum Bunny Token", "pBUNNY") {
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */

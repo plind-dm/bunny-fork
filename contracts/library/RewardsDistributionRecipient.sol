@@ -34,34 +34,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.2;
 
-import "@pancakeswap/pancake-swap-lib/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
+abstract contract RewardsDistributionRecipient is Ownable {
+    address public rewardsDistribution;
 
-abstract contract Pausable is Ownable {
-    uint public lastPauseTime;
-    bool public paused;
-
-    event PauseChanged(bool isPaused);
-
-    modifier notPaused {
-        require(!paused, "This action cannot be performed while the contract is paused");
+    modifier onlyRewardsDistribution() {
+        require(msg.sender == rewardsDistribution, "Pausable: caller is not the rewardsDistribution");
         _;
     }
 
-    constructor() internal {
-        require(owner() != address(0), "Owner must be set");
+    constructor () public {
     }
 
-    function setPaused(bool _paused) external onlyOwner {
-        if (_paused == paused) {
-            return;
-        }
+    function notifyRewardAmount(uint256 reward) virtual external;
 
-        paused = _paused;
-        if (paused) {
-            lastPauseTime = now;
-        }
-
-        emit PauseChanged(paused);
+    function setRewardsDistribution(address _rewardsDistribution) external onlyOwner {
+        rewardsDistribution = _rewardsDistribution;
     }
+
+    uint256[50] private __gap;
 }

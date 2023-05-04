@@ -34,7 +34,7 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import {PoolConstant} from "../library/PoolConstant.sol";
 import "../interfaces/IVaultCollateral.sol";
@@ -42,7 +42,7 @@ import "../interfaces/IVaultCollateral.sol";
 import "./calculator/PriceCalculatorETH.sol";
 
 
-contract DashboardETH is OwnableUpgradeable {
+contract DashboardETH is Ownable {
     using SafeMath for uint;
 
     PriceCalculatorETH public constant priceCalculator = PriceCalculatorETH(0xB73106688fdfee99578731aDb18c9689462B415a);
@@ -51,8 +51,7 @@ contract DashboardETH is OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public Ownable() {
     }
 
     /* ========== TVL Calculation ========== */

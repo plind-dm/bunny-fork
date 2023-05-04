@@ -3,30 +3,30 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "../library/RewardsDistributionRecipientUpgradeable.sol";
-import "../library/PausableUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "../library/RewardsDistributionRecipient.sol";
+import "../library/Pausable.sol";
 
 import "../interfaces/IPriceCalculator.sol";
 import "../interfaces/IPresaleLocker.sol";
 
 
-contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipientUpgradeable, ReentrancyGuardUpgradeable, PausableUpgradeable {
+contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipient, ReentrancyGuard, Pausable {
     using SafeMath for uint256;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ========== */
 
     address public constant QBT = 0x17B7163cf1Dbd286E262ddc68b553D899B93f526; // QBT
-    IBEP20 public constant stakingToken = IBEP20(0x67EFeF66A55c4562144B9AcfCFbc62F9E4269b3e); // QBT-BNB
+    IERC20 public constant stakingToken = IERC20(0x67EFeF66A55c4562144B9AcfCFbc62F9E4269b3e); // QBT-BNB
     IPriceCalculator public constant priceCalculator = IPriceCalculator(0xF5BF8A9249e3cc4cB684E3f23db9669323d4FB7d);
 
     /* ========== STATE VARIABLES ========== */
 
-    IBEP20 public rewardsToken;
+    IERC20 public rewardsToken;
     uint256 public periodFinish;
     uint256 public rewardRate;
     uint256 public rewardsDuration;
@@ -64,11 +64,7 @@ contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipientUpgradeable,
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __RewardsDistributionRecipient_init();
-        __ReentrancyGuard_init();
-        __PausableUpgradeable_init();
-
+    constructor() public {
         periodFinish = 0;
         rewardRate = 0;
         rewardsDuration = 30 days;
@@ -166,7 +162,7 @@ contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipientUpgradeable,
         if (reward > 0) {
             rewards[msg.sender] = 0;
 
-            IBEP20(rewardsToken).safeTransfer(msg.sender, reward);
+            IERC20(rewardsToken).safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -178,7 +174,7 @@ contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipientUpgradeable,
     function setRewardsToken(address _rewardsToken) external onlyOwner {
         require(address(rewardsToken) == address(0), "VaultQBTBNB: rewards token is already set");
 
-        rewardsToken = IBEP20(_rewardsToken);
+        rewardsToken = IERC20(_rewardsToken);
     }
 
     function notifyRewardAmount(uint256 reward) override external onlyRewardsDistribution updateReward(address(0)) {
@@ -241,7 +237,7 @@ contract VaultQBTBNB is IPresaleLocker, RewardsDistributionRecipientUpgradeable,
     function recoverToken(address tokenAddress, uint tokenAmount) external override onlyOwner {
         require(tokenAddress != address(stakingToken), "VaultQBTBNB: invalid address");
 
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 

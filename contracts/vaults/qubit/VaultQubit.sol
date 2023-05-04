@@ -35,9 +35,9 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../../library/PausableUpgradeable.sol";
+import "../../library/Pausable.sol";
 import "../../library/SafeToken.sol";
 
 import "../../interfaces/qubit/IQToken.sol";
@@ -45,8 +45,9 @@ import "../../interfaces/qubit/IQore.sol";
 import "../../interfaces/qubit/IVaultQubitBridge.sol";
 import "../../interfaces/qubit/IVaultQubit.sol";
 import "../VaultController.sol";
+import "../../interfaces/IBEP20.sol";
 
-contract VaultQubit is VaultController, IVaultQubit, ReentrancyGuardUpgradeable {
+contract VaultQubit is VaultController, IVaultQubit, ReentrancyGuard {
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -57,7 +58,7 @@ contract VaultQubit is VaultController, IVaultQubit, ReentrancyGuardUpgradeable 
 
     IQore private constant QORE = IQore(0xF70314eb9c7Fe7D88E6af5aa7F898b3A162dcd48);
     IBEP20 private constant BUNNY = IBEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
-    IBEP20 private constant QBT = IBEP20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
+    IERC20 private constant QBT = IERC20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
 
     uint private constant DUST = 1000;
@@ -122,11 +123,9 @@ contract VaultQubit is VaultController, IVaultQubit, ReentrancyGuardUpgradeable 
 
     receive() external payable {}
 
-    function initialize(address _token, address _qToken) external initializer {
+    constructor(address _token, address _qToken) public {
         require(_token != address(0), "VaultQubit: invalid token");
-        __VaultController_init(IBEP20(_token));
-        __ReentrancyGuard_init();
-
+        setStakingToken(_token);
         qToken = IQToken(_qToken);
 
         leverageRound = 3;
@@ -532,7 +531,7 @@ contract VaultQubit is VaultController, IVaultQubit, ReentrancyGuardUpgradeable 
             "VaultQubit: cannot recover token"
         );
 
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }

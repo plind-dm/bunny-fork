@@ -34,8 +34,9 @@ pragma experimental ABIEncoderV2;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/BEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../library/Pausable.sol";
 
 import "../interfaces/IPancakeRouter02.sol";
 import "../interfaces/IPancakePair.sol";
@@ -43,12 +44,11 @@ import "../interfaces/IStrategy.sol";
 import "../interfaces/IMasterChef.sol";
 import "../interfaces/IBunnyMinterV2.sol";
 import "../interfaces/IBunnyChef.sol";
-import "../library/PausableUpgradeable.sol";
-import "../library/WhitelistUpgradeable.sol";
+import "../library/Whitelist.sol";
+import "../library/BEP20.sol";
 
-
-abstract contract VaultController is IVaultController, PausableUpgradeable, WhitelistUpgradeable {
-    using SafeBEP20 for IBEP20;
+abstract contract VaultController is IVaultController, Pausable, Whitelist {
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANT VARIABLES ========== */
     BEP20 private constant BUNNY = BEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
@@ -56,7 +56,7 @@ abstract contract VaultController is IVaultController, PausableUpgradeable, Whit
     /* ========== STATE VARIABLES ========== */
 
     address public keeper;
-    IBEP20 internal _stakingToken;
+    IERC20 internal _stakingToken;
     IBunnyMinterV2 internal _minter;
     IBunnyChef internal _bunnyChef;
 
@@ -78,12 +78,12 @@ abstract contract VaultController is IVaultController, PausableUpgradeable, Whit
 
     /* ========== INITIALIZER ========== */
 
-    function __VaultController_init(IBEP20 token) internal initializer {
-        __PausableUpgradeable_init();
-        __WhitelistUpgradeable_init();
-
+    constructor() public {
         keeper = 0x793074D9799DC3c6039F8056F1Ba884a73462051;
-        _stakingToken = token;
+    }
+
+    function setStakingToken(address stakingToken) public onlyOwner {
+        _stakingToken = IERC20(stakingToken);
     }
 
     /* ========== VIEWS FUNCTIONS ========== */
@@ -131,7 +131,7 @@ abstract contract VaultController is IVaultController, PausableUpgradeable, Whit
 
     function recoverToken(address _token, uint amount) virtual external onlyOwner {
         require(_token != address(_stakingToken), 'VaultController: cannot recover underlying token');
-        IBEP20(_token).safeTransfer(owner(), amount);
+        IERC20(_token).safeTransfer(owner(), amount);
 
         emit Recovered(_token, amount);
     }

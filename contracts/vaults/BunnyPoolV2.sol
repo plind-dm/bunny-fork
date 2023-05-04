@@ -35,9 +35,9 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../library/SafeToken.sol";
 
@@ -45,8 +45,8 @@ import "../interfaces/IBunnyPool.sol";
 
 import "./VaultController.sol";
 
-contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable {
-    using SafeBEP20 for IBEP20;
+contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -93,10 +93,8 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __VaultController_init(IBEP20(BUNNY));
-        __ReentrancyGuard_init();
-
+    constructor() public {
+        setStakingToken(BUNNY);
         rewardsDuration = 30 days;
         rewardsDistribution = FEE_BOX;
     }
@@ -201,9 +199,9 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
             if (rewardInfo.token == WBNB) {
                 _balance = address(this).balance;
             } else if (rewardInfo.token == BUNNY) {
-                _balance = IBEP20(BUNNY).balanceOf(address(this)).sub(totalSupply);
+                _balance = IERC20(BUNNY).balanceOf(address(this)).sub(totalSupply);
             } else {
-                _balance = IBEP20(rewardInfo.token).balanceOf(address(this));
+                _balance = IERC20(rewardInfo.token).balanceOf(address(this));
             }
 
             require(rewardInfo.rewardRate <= _balance.div(rewardsDuration), "BunnyPoolV2: invalid rewards amount");
@@ -224,7 +222,7 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
     }
 
     function depositAll() public nonReentrant {
-        _deposit(IBEP20(_stakingToken).balanceOf(msg.sender), msg.sender);
+        _deposit(IERC20(_stakingToken).balanceOf(msg.sender), msg.sender);
     }
 
     function withdraw(uint _amount) public override nonReentrant notPaused updateRewards(msg.sender) {
@@ -233,7 +231,7 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
 
         totalSupply = totalSupply.sub(_amount);
         _balances[msg.sender] = _balances[msg.sender].sub(_amount);
-        IBEP20(_stakingToken).safeTransfer(msg.sender, _amount);
+        IERC20(_stakingToken).safeTransfer(msg.sender, _amount);
         emit Withdrawn(msg.sender, _amount);
     }
 
@@ -255,7 +253,7 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
                 if (_rewardTokens[i] == WBNB) {
                     SafeToken.safeTransferETH(msg.sender, reward);
                 } else {
-                    IBEP20(_rewardTokens[i]).safeTransfer(msg.sender, reward);
+                    IERC20(_rewardTokens[i]).safeTransfer(msg.sender, reward);
                 }
                 emit RewardsPaid(msg.sender, _rewardTokens[i], reward);
             }
@@ -269,7 +267,7 @@ contract BunnyPoolV2 is IBunnyPool, VaultController, ReentrancyGuardUpgradeable 
     /* ========== PRIVATE FUNCTIONS ========== */
 
     function _deposit(uint _amount, address _to) private notPaused updateRewards(_to) {
-        IBEP20(_stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(_stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
         _bunnyChef.updateRewardsOf(address(this));
 
         totalSupply = totalSupply.add(_amount);

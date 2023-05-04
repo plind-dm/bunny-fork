@@ -34,7 +34,7 @@ pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../interfaces/IUniswapV2Pair.sol";
 import "../interfaces/IUniswapV2Router02.sol";
@@ -42,7 +42,7 @@ import "../interfaces/IZap.sol";
 import "../interfaces/IWETH.sol";
 
 
-contract ZapETH is IZap, OwnableUpgradeable {
+contract ZapETH is IZap, Ownable {
     using SafeMath for uint;
     using SafeERC20 for IERC20;
 
@@ -63,8 +63,7 @@ contract ZapETH is IZap, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() Ownable() public {
         require(owner() != address(0), "ZapETH: owner must be set");
 
         setNotLP(WETH);

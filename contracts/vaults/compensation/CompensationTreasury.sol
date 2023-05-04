@@ -33,16 +33,16 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "../../library/WhitelistUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "../../library/Whitelist.sol";
 
 import "../../interfaces/IPriceCalculator.sol";
+import "../../library/SafeToken.sol";
 import "../../zap/ZapBSC.sol";
 import "./VaultCompensation.sol";
 
-
-contract CompensationTreasury is WhitelistUpgradeable {
-    using SafeBEP20 for IBEP20;
+contract CompensationTreasury is Whitelist {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -86,8 +86,7 @@ contract CompensationTreasury is WhitelistUpgradeable {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public {
     }
 
     /* ========== VIEW FUNCTIONS ========== */
@@ -113,12 +112,12 @@ contract CompensationTreasury is WhitelistUpgradeable {
         address[] memory _tokens = vaultCompensation.rewardTokens();
         uint[] memory _amounts = new uint[](_tokens.length);
         for (uint i = 0; i < _tokens.length; i++) {
-            uint _amount = _tokens[i] == WBNB ? address(this).balance : IBEP20(_tokens[i]).balanceOf(address(this));
+            uint _amount = _tokens[i] == WBNB ? address(this).balance : IERC20(_tokens[i]).balanceOf(address(this));
             if (_amount > 0) {
                 if (_tokens[i] == WBNB) {
                     SafeToken.safeTransferETH(address(vaultCompensation), _amount);
                 } else {
-                    IBEP20(_tokens[i]).safeTransfer(address(vaultCompensation), _amount);
+                    IERC20(_tokens[i]).safeTransfer(address(vaultCompensation), _amount);
                 }
             }
             _amounts[i] = _amount;
@@ -127,10 +126,10 @@ contract CompensationTreasury is WhitelistUpgradeable {
     }
 
     function buyback() public onlyKeeper {
-        uint balance = Math.min(IBEP20(CAKE).balanceOf(address(this)), 2000e18);
+        uint balance = Math.min(IERC20(CAKE).balanceOf(address(this)), 2000e18);
         if (balance > 0) {
-            if (IBEP20(CAKE).allowance(address(this), address(zapBSC)) == 0) {
-                IBEP20(CAKE).approve(address(zapBSC), uint(- 1));
+            if (IERC20(CAKE).allowance(address(this), address(zapBSC)) == 0) {
+                IERC20(CAKE).approve(address(zapBSC), uint(- 1));
             }
             zapBSC.zapInToken(CAKE, balance, BUNNY);
         }
@@ -140,12 +139,12 @@ contract CompensationTreasury is WhitelistUpgradeable {
         address[8] memory _flips = flips();
         for (uint i = 0; i < _flips.length; i++) {
             address flip = _flips[i];
-            uint balance = IBEP20(flip).balanceOf(address(this));
+            uint balance = IERC20(flip).balanceOf(address(this));
             if (balance > 0) {
-                if (IBEP20(flip).allowance(address(this), address(zapBSC)) == 0) {
-                    IBEP20(flip).approve(address(zapBSC), uint(- 1));
+                if (IERC20(flip).allowance(address(this), address(zapBSC)) == 0) {
+                    IERC20(flip).approve(address(zapBSC), uint(- 1));
                 }
-                zapBSC.zapOut(_flips[i], IBEP20(_flips[i]).balanceOf(address(this)));
+                zapBSC.zapOut(_flips[i], IERC20(_flips[i]).balanceOf(address(this)));
             }
         }
     }
@@ -153,10 +152,10 @@ contract CompensationTreasury is WhitelistUpgradeable {
     function covertTokensPartial(address[] memory _tokens, uint[] memory _amounts) public onlyKeeper {
         for (uint i = 0; i < _tokens.length; i++) {
             address token = _tokens[i];
-            uint balance = IBEP20(token).balanceOf(address(this));
+            uint balance = IERC20(token).balanceOf(address(this));
             if (balance >= _amounts[i]) {
-                if (IBEP20(token).allowance(address(this), address(zapBSC)) == 0) {
-                    IBEP20(token).approve(address(zapBSC), uint(- 1));
+                if (IERC20(token).allowance(address(this), address(zapBSC)) == 0) {
+                    IERC20(token).approve(address(zapBSC), uint(- 1));
                 }
                 zapBSC.zapOut(_tokens[i], _amounts[i]);
             }
@@ -171,10 +170,10 @@ contract CompensationTreasury is WhitelistUpgradeable {
         address[5] memory _tokens = redundantTokens();
         for (uint i = 0; i < _tokens.length; i++) {
             address token = _tokens[i];
-            uint balance = IBEP20(token).balanceOf(address(this));
+            uint balance = IERC20(token).balanceOf(address(this));
             if (balance > 0) {
-                if (IBEP20(token).allowance(address(this), address(zapBSC)) == 0) {
-                    IBEP20(token).approve(address(zapBSC), uint(- 1));
+                if (IERC20(token).allowance(address(this), address(zapBSC)) == 0) {
+                    IERC20(token).approve(address(zapBSC), uint(- 1));
                 }
                 zapBSC.zapOut(_tokens[i], balance);
             }

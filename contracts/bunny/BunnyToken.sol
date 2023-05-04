@@ -32,11 +32,11 @@ pragma solidity ^0.6.12;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/BEP20.sol";
-
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 // BunnyToken with Governance.
-contract BunnyToken is BEP20('Bunny Token', 'BUNNY') {
+contract BunnyToken is ERC20('Bunny Token', 'BUNNY'), Ownable {
     // @dev Creates `_amount` token to `_to`. Must only be called by the owner (MasterChef).
     function mint(address _to, uint256 _amount) public onlyOwner {
         _mint(_to, _amount);

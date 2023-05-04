@@ -33,20 +33,22 @@ pragma solidity ^0.6.12;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/BEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../interfaces/IBunnyMinterV2.sol";
 import "../interfaces/IBunnyPool.sol";
+import "../interfaces/IBEP20.sol";
 import "../interfaces/IPriceCalculator.sol";
-
-import "../zap/ZapBSC.sol";
 import "../library/SafeToken.sol";
+import "../library/BEP20.sol";
+import "../zap/ZapBSC.sol";
 
-contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
+contract BunnyMinterV2 is IBunnyMinterV2, Ownable {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -103,7 +105,7 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
+    constructor() public {
         WITHDRAWAL_FEE_FREE_PERIOD = 3 days;
         WITHDRAWAL_FEE = 50;
         PERFORMANCE_FEE = 3000;
@@ -111,7 +113,7 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
         _deprecated_bunnyPerProfitBNB = 5e18;
         _deprecated_bunnyPerBunnyBNBFlip = 6e18;
 
-        IBEP20(BUNNY).approve(BUNNY_POOL_V1, uint(- 1));
+        IERC20(BUNNY).approve(BUNNY_POOL_V1, uint(- 1));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -158,9 +160,9 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
     }
 
     function setBunnyPool(address _bunnyPool) external onlyOwner {
-        IBEP20(BUNNY).approve(BUNNY_POOL_V1, 0);
+        IERC20(BUNNY).approve(BUNNY_POOL_V1, 0);
         bunnyPool = _bunnyPool;
-        IBEP20(BUNNY).approve(_bunnyPool, uint(-1));
+        IERC20(BUNNY).approve(_bunnyPool, uint(-1));
     }
 
     /* ========== VIEWS ========== */
@@ -210,7 +212,7 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
         _transferAsset(asset, feeSum);
 
         if (asset == BUNNY) {
-            IBEP20(BUNNY).safeTransfer(DEAD, feeSum);
+            IERC20(BUNNY).safeTransfer(DEAD, feeSum);
             return;
         }
 
@@ -219,14 +221,14 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
             if (asset == address(0)) { // means BNB
                 SafeToken.safeTransferETH(FEE_BOX, feeSum);
             } else {
-                IBEP20(asset).safeTransfer(FEE_BOX, feeSum);
+                IERC20(asset).safeTransfer(FEE_BOX, feeSum);
             }
         } else {
             if (_withdrawalFee > 0) {
                 if (asset == address(0)) { // means BNB
                     SafeToken.safeTransferETH(FEE_BOX, _withdrawalFee);
                 } else {
-                    IBEP20(asset).safeTransfer(FEE_BOX, _withdrawalFee);
+                    IERC20(asset).safeTransfer(FEE_BOX, _withdrawalFee);
                 }
             }
 
@@ -265,11 +267,11 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
     function safeBunnyTransfer(address _to, uint _amount) external override onlyBunnyChef {
         if (_amount == 0) return;
 
-        uint bal = IBEP20(BUNNY).balanceOf(address(this));
+        uint bal = IERC20(BUNNY).balanceOf(address(this));
         if (_amount <= bal) {
-            IBEP20(BUNNY).safeTransfer(_to, _amount);
+            IERC20(BUNNY).safeTransfer(_to, _amount);
         } else {
-            IBEP20(BUNNY).safeTransfer(_to, bal);
+            IERC20(BUNNY).safeTransfer(_to, bal);
         }
     }
 
@@ -282,14 +284,14 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
     /* ========== PRIVATE FUNCTIONS ========== */
 
     function _marketBuy(address asset, uint amount, address to) private {
-        uint _initBunnyAmount = IBEP20(BUNNY).balanceOf(address(this));
+        uint _initBunnyAmount = IERC20(BUNNY).balanceOf(address(this));
 
         if (asset == address(0)) {
             zap.zapIn{ value : amount }(BUNNY);
         }
         else if (keccak256(abi.encodePacked(IPancakePair(asset).symbol())) == keccak256("Cake-LP")) {
-            if (IBEP20(asset).allowance(address(this), address(router)) == 0) {
-                IBEP20(asset).safeApprove(address(router), uint(- 1));
+            if (IERC20(asset).allowance(address(this), address(router)) == 0) {
+                IERC20(asset).safeApprove(address(router), uint(- 1));
             }
 
             IPancakePair pair = IPancakePair(asset);
@@ -303,11 +305,11 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
 
             (uint amountToken0, uint amountToken1) = router.removeLiquidity(token0, token1, amount, 0, 0, address(this), block.timestamp);
 
-            if (IBEP20(token0).allowance(address(this), address(zap)) == 0) {
-                IBEP20(token0).safeApprove(address(zap), uint(- 1));
+            if (IERC20(token0).allowance(address(this), address(zap)) == 0) {
+                IERC20(token0).safeApprove(address(zap), uint(- 1));
             }
-            if (IBEP20(token1).allowance(address(this), address(zap)) == 0) {
-                IBEP20(token1).safeApprove(address(zap), uint(- 1));
+            if (IERC20(token1).allowance(address(this), address(zap)) == 0) {
+                IERC20(token1).safeApprove(address(zap), uint(- 1));
             }
 
             if (token0 != BUNNY) {
@@ -319,15 +321,15 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
             }
         }
         else {
-            if (IBEP20(asset).allowance(address(this), address(zap)) == 0) {
-                IBEP20(asset).safeApprove(address(zap), uint(- 1));
+            if (IERC20(asset).allowance(address(this), address(zap)) == 0) {
+                IERC20(asset).safeApprove(address(zap), uint(- 1));
             }
 
             zap.zapInToken(asset, amount, BUNNY);
         }
 
-        uint bunnyAmount = IBEP20(BUNNY).balanceOf(address(this)).sub(_initBunnyAmount);
-        IBEP20(BUNNY).safeTransfer(to, bunnyAmount);
+        uint bunnyAmount = IERC20(BUNNY).balanceOf(address(this)).sub(_initBunnyAmount);
+        IERC20(BUNNY).safeTransfer(to, bunnyAmount);
     }
 
     function _transferAsset(address asset, uint amount) private {
@@ -335,7 +337,7 @@ contract BunnyMinterV2 is IBunnyMinterV2, OwnableUpgradeable {
             // case) transferred BNB
             require(msg.value >= amount);
         } else {
-            IBEP20(asset).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(asset).safeTransferFrom(msg.sender, address(this), amount);
         }
     }
 

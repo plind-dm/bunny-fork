@@ -33,7 +33,7 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
 import {PoolConstant} from "../library/PoolConstant.sol";
@@ -48,13 +48,13 @@ import "./VaultController.sol";
 
 
 contract VaultFlipToFlip is VaultController, IStrategy {
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     /* ========== CONSTANTS ============= */
 
-    IBEP20 private constant CAKE = IBEP20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
-    IBEP20 private constant WBNB = IBEP20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    IERC20 private constant CAKE = IERC20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
+    IERC20 private constant WBNB = IERC20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
     IMasterChef private constant CAKE_MASTER_CHEF = IMasterChef(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
     PoolConstant.PoolTypes public constant override poolType = PoolConstant.PoolTypes.FlipToFlip;
 
@@ -87,9 +87,8 @@ contract VaultFlipToFlip is VaultController, IStrategy {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(uint _pid, address _token) external initializer {
-        __VaultController_init(IBEP20(_token));
-
+    constructor (uint _pid, address _token) public {
+        setStakingToken(_token);
         _stakingToken.safeApprove(address(CAKE_MASTER_CHEF), uint(- 1));
         pid = _pid;
 
@@ -291,7 +290,7 @@ contract VaultFlipToFlip is VaultController, IStrategy {
             require(amount <= cakeBalance.sub(cakeHarvested), "VaultFlipToFlip: cannot recover lp's harvested cake");
         }
 
-        IBEP20(token).safeTransfer(owner(), amount);
+        IERC20(token).safeTransfer(owner(), amount);
         emit Recovered(token, amount);
     }
 }

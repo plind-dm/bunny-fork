@@ -34,8 +34,8 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {PotConstant} from "../library/PotConstant.sol";
@@ -46,17 +46,18 @@ import "../interfaces/IZap.sol";
 import "../interfaces/IPriceCalculator.sol";
 
 import "./PotController.sol";
+import "../interfaces/IBEP20.sol";
 
 contract PotCakeLover is VaultController, PotController {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANT ========== */
 
     address public constant TIMELOCK_ADDRESS = 0x85c9162A51E03078bdCd08D4232Bab13ed414cC3;
 
-    IBEP20 private constant BUNNY = IBEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
-    IBEP20 private constant CAKE = IBEP20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
+    IERC20 private constant BUNNY = IERC20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
+    IERC20 private constant CAKE = IERC20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
 
     IMasterChef private constant CAKE_MASTER_CHEF = IMasterChef(0x73feaa1eE314F8c655E354234017bE2193C9E24E);
     IPriceCalculator private constant priceCalculator = IPriceCalculator(0xF5BF8A9249e3cc4cB684E3f23db9669323d4FB7d);
@@ -117,9 +118,8 @@ contract PotCakeLover is VaultController, PotController {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(uint _pid, address _token) external initializer {
-        __VaultController_init(IBEP20(_token));
-
+    constructor(uint _pid, address _token) public {
+        setStakingToken(_token);
         _stakingToken.safeApprove(address(CAKE_MASTER_CHEF), uint(- 1));
         _stakingToken.safeApprove(address(ZapBSC), uint(- 1));
 

@@ -34,9 +34,9 @@ pragma experimental ABIEncoderV2;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {PoolConstant} from "../../library/PoolConstant.sol";
 import "../../interfaces/IPancakePair.sol";
@@ -47,9 +47,10 @@ import "../VaultController.sol";
 import "../../interfaces/multiplexer/IQMultiplexer.sol";
 import "../../interfaces/multiplexer/IQPositionManager.sol";
 import "../../interfaces/IPriceCalculator.sol";
+import "../../interfaces/IBEP20.sol";
 
-contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuardUpgradeable {
-    using SafeBEP20 for IBEP20;
+contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     /* ========== CONSTANTS ============= */
@@ -78,10 +79,8 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
 
     receive() external payable {}
 
-    function initialize(address _token) external initializer {
-        __ReentrancyGuard_init();
-        __VaultController_init(IBEP20(_token));
-
+    constructor (address _token) public {
+        setStakingToken(_token);
         _token0 = IPancakePair(_token).token0();
         _token1 = IPancakePair(_token).token1();
     }
@@ -235,13 +234,13 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
         userInfo.debtShare[_token0] = userInfo.debtShare[_token0].sub(debtShareOfPosition(id, _token0));
         userInfo.debtShare[_token1] = userInfo.debtShare[_token1].sub(debtShareOfPosition(id, _token1));
 
-        uint beforeToken0 = _token0 == WBNB ? address(this).balance : IBEP20(_token0).balanceOf(address(this));
-        uint beforeToken1 = _token1 == WBNB ? address(this).balance : IBEP20(_token1).balanceOf(address(this));
+        uint beforeToken0 = _token0 == WBNB ? address(this).balance : IERC20(_token0).balanceOf(address(this));
+        uint beforeToken1 = _token1 == WBNB ? address(this).balance : IERC20(_token1).balanceOf(address(this));
 
         qMultiplexer.closePosition(address(_stakingToken), id);
 
-        uint token0Refund = _token0 == WBNB ? address(this).balance.sub(beforeToken0) : IBEP20(_token0).balanceOf(address(this)).sub(beforeToken0);
-        uint token1Refund = _token1 == WBNB ? address(this).balance.sub(beforeToken1) : IBEP20(_token1).balanceOf(address(this)).sub(beforeToken1);
+        uint token0Refund = _token0 == WBNB ? address(this).balance.sub(beforeToken0) : IERC20(_token0).balanceOf(address(this)).sub(beforeToken0);
+        uint token1Refund = _token1 == WBNB ? address(this).balance.sub(beforeToken1) : IERC20(_token1).balanceOf(address(this)).sub(beforeToken1);
         token0Refund = _calcWithdrawalFee(_token0, token0Refund, positions[id].depositedAt);
         token1Refund = _calcWithdrawalFee(_token1, token1Refund, positions[id].depositedAt);
 
@@ -295,15 +294,15 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
         userInfo.debtShare[_token0] = userInfo.debtShare[_token0].sub(debtShareOfPosition(id, _token0));
         userInfo.debtShare[_token1] = userInfo.debtShare[_token1].sub(debtShareOfPosition(id, _token1));
 
-        uint beforeToken0 = _token0 == WBNB ? address(this).balance : IBEP20(_token0).balanceOf(address(this));
-        uint beforeToken1 = _token1 == WBNB ? address(this).balance : IBEP20(_token1).balanceOf(address(this));
+        uint beforeToken0 = _token0 == WBNB ? address(this).balance : IERC20(_token0).balanceOf(address(this));
+        uint beforeToken1 = _token1 == WBNB ? address(this).balance : IERC20(_token1).balanceOf(address(this));
         qMultiplexer.reducePosition(address(_stakingToken), id, amount, repayAmount);
 
         userInfo.debtShare[_token0] = userInfo.debtShare[_token0].add(debtShareOfPosition(id, _token0));
         userInfo.debtShare[_token1] = userInfo.debtShare[_token1].add(debtShareOfPosition(id, _token1));
 
-        uint token0Refund = _token0 == WBNB ? address(this).balance.sub(beforeToken0) : IBEP20(_token0).balanceOf(address(this)).sub(beforeToken0);
-        uint token1Refund = _token1 == WBNB ? address(this).balance.sub(beforeToken1) : IBEP20(_token1).balanceOf(address(this)).sub(beforeToken1);
+        uint token0Refund = _token0 == WBNB ? address(this).balance.sub(beforeToken0) : IERC20(_token0).balanceOf(address(this)).sub(beforeToken0);
+        uint token1Refund = _token1 == WBNB ? address(this).balance.sub(beforeToken1) : IERC20(_token1).balanceOf(address(this)).sub(beforeToken1);
 
         token0Refund = _calcWithdrawalFee(_token0, token0Refund, _depositTimestamp);
         token1Refund = _calcWithdrawalFee(_token1, token1Refund, _depositTimestamp);
@@ -344,9 +343,9 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
     function setMultiplexer(address _multiplexer) external onlyOwner {
         qMultiplexer = IQMultiplexer(_multiplexer);
 
-        IBEP20(address(_stakingToken)).safeApprove(_multiplexer, uint(-1));
-        IBEP20(_token0).safeApprove(_multiplexer, uint(-1));
-        IBEP20(_token1).safeApprove(_multiplexer, uint(-1));
+        IERC20(address(_stakingToken)).safeApprove(_multiplexer, uint(-1));
+        IERC20(_token0).safeApprove(_multiplexer, uint(-1));
+        IERC20(_token1).safeApprove(_multiplexer, uint(-1));
     }
 
     function setPositionManager(address _positionManager) external onlyOwner {
@@ -356,13 +355,13 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
     function setMinter(address newMinter) public override onlyOwner {
         if (newMinter != address(0)) {
             require(newMinter == BUNNY.getOwner(), "VaultMultiplexer: not bunny minter");
-            IBEP20(_token0).safeApprove(newMinter, 0);
-            IBEP20(_token0).safeApprove(newMinter, uint(-1));
-            IBEP20(_token1).safeApprove(newMinter, 0);
-            IBEP20(_token1).safeApprove(newMinter, uint(-1));
+            IERC20(_token0).safeApprove(newMinter, 0);
+            IERC20(_token0).safeApprove(newMinter, uint(-1));
+            IERC20(_token1).safeApprove(newMinter, 0);
+            IERC20(_token1).safeApprove(newMinter, uint(-1));
         }
-        if (address(_minter) != address(0)) IBEP20(_token0).safeApprove(address(_minter), 0);
-        if (address(_minter) != address(0)) IBEP20(_token1).safeApprove(address(_minter), 0);
+        if (address(_minter) != address(0)) IERC20(_token0).safeApprove(address(_minter), 0);
+        if (address(_minter) != address(0)) IERC20(_token1).safeApprove(address(_minter), 0);
         _minter = IBunnyMinterV2(newMinter);
     }
 
@@ -370,14 +369,14 @@ contract VaultMultiplexer is VaultController, IVaultMultiplexer, ReentrancyGuard
 
     function _transferIn(address token, address from, uint amount) private returns (uint amountIn) {
         if (token == WBNB) return msg.value;
-        uint _before = IBEP20(token).balanceOf(address(this));
-        IBEP20(token).safeTransferFrom(from, address(this), amount);
-        amountIn = IBEP20(token).balanceOf(address(this)).sub(_before);
+        uint _before = IERC20(token).balanceOf(address(this));
+        IERC20(token).safeTransferFrom(from, address(this), amount);
+        amountIn = IERC20(token).balanceOf(address(this)).sub(_before);
     }
 
     function _transferOut(address token, address to, uint amount) private {
         if (amount > 0){
-            token == WBNB ? SafeToken.safeTransferETH(to, amount) : IBEP20(token).safeTransfer(to, amount);
+            token == WBNB ? SafeToken.safeTransferETH(to, amount) : IERC20(token).safeTransfer(to, amount);
         }
     }
 

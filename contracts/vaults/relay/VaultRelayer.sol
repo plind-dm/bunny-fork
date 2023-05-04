@@ -33,22 +33,20 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../../interfaces/IBank.sol";
 import "../../interfaces/IPriceCalculator.sol";
-import "../../library/WhitelistUpgradeable.sol";
+import "../../library/Whitelist.sol";
 import "../../library/SafeToken.sol";
 import "../../library/PoolConstant.sol";
-
 import "../../zap/ZapBSC.sol";
 import "./VaultRelayInternal.sol";
 
-
-contract VaultRelayer is WhitelistUpgradeable {
+contract VaultRelayer is Whitelist {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -83,11 +81,9 @@ contract VaultRelayer is WhitelistUpgradeable {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __WhitelistUpgradeable_init();
-
-        if (IBEP20(CAKE).allowance(address(this), address(zapBSC)) == 0) {
-            IBEP20(CAKE).safeApprove(address(zapBSC), uint(- 1));
+    constructor() public {
+        if (IERC20(CAKE).allowance(address(this), address(zapBSC)) == 0) {
+            IERC20(CAKE).safeApprove(address(zapBSC), uint(- 1));
         }
     }
 
@@ -207,12 +203,12 @@ contract VaultRelayer is WhitelistUpgradeable {
         bank.borrow(pool, account, bnbAmount);
         bnbAmount = address(this).balance.sub(_beforeBNB);
 
-        uint _beforeFlip = IBEP20(flip).balanceOf(address(this));
+        uint _beforeFlip = IERC20(flip).balanceOf(address(this));
         zapBSC.zapIn{value : bnbAmount}(flip);
-        uint flipAmount = IBEP20(flip).balanceOf(address(this)).sub(_beforeFlip);
+        uint flipAmount = IERC20(flip).balanceOf(address(this)).sub(_beforeFlip);
 
-        if (IBEP20(flip).allowance(address(this), pool) == 0) {
-            IBEP20(flip).safeApprove(pool, uint(- 1));
+        if (IERC20(flip).allowance(address(this), pool) == 0) {
+            IERC20(flip).safeApprove(pool, uint(- 1));
         }
 
         vault.deposit(flipAmount, account);
@@ -245,12 +241,12 @@ contract VaultRelayer is WhitelistUpgradeable {
         VaultRelayInternal vault = VaultRelayInternal(pool);
         address flip = vault.stakingToken();
 
-        uint _beforeFlip = IBEP20(flip).balanceOf(address(this));
-        uint _beforeCake = IBEP20(CAKE).balanceOf(address(this));
+        uint _beforeFlip = IERC20(flip).balanceOf(address(this));
+        uint _beforeCake = IERC20(CAKE).balanceOf(address(this));
 
         vault.withdrawAll(account);
-        flipAmount = IBEP20(flip).balanceOf(address(this)).sub(_beforeFlip);
-        cakeAmount = IBEP20(CAKE).balanceOf(address(this)).sub(_beforeCake);
+        flipAmount = IERC20(flip).balanceOf(address(this)).sub(_beforeFlip);
+        cakeAmount = IERC20(CAKE).balanceOf(address(this)).sub(_beforeCake);
     }
 
     function _zapOutToBNB(address pool, uint flipAmount, uint cakeAmount) private returns (uint) {
@@ -260,13 +256,13 @@ contract VaultRelayer is WhitelistUpgradeable {
         IPancakePair pair = IPancakePair(flip);
         address pairToken = pair.token0() == WBNB ? pair.token1() : pair.token0();
 
-        uint _beforePairTokenAmount = IBEP20(pairToken).balanceOf(address(this));
+        uint _beforePairTokenAmount = IERC20(pairToken).balanceOf(address(this));
 
         _approveIfNeeded(flip);
         if (flipAmount > 0) zapBSC.zapOut(flip, flipAmount);
         if (cakeAmount > 0) zapBSC.zapOut(CAKE, cakeAmount);
 
-        uint pairTokenAmount = IBEP20(pairToken).balanceOf(address(this)).sub(_beforePairTokenAmount);
+        uint pairTokenAmount = IERC20(pairToken).balanceOf(address(this)).sub(_beforePairTokenAmount);
         if (pairTokenAmount > 0) {
             _approveIfNeeded(pairToken);
             zapBSC.zapOut(pairToken, pairTokenAmount);
@@ -275,8 +271,8 @@ contract VaultRelayer is WhitelistUpgradeable {
     }
 
     function _approveIfNeeded(address token) private {
-        if (IBEP20(token).allowance(address(this), address(zapBSC)) == 0) {
-            IBEP20(token).safeApprove(address(zapBSC), uint(- 1));
+        if (IERC20(token).allowance(address(this), address(zapBSC)) == 0) {
+            IERC20(token).safeApprove(address(zapBSC), uint(- 1));
         }
     }
 
@@ -289,7 +285,7 @@ contract VaultRelayer is WhitelistUpgradeable {
             keccak256(abi.encodePacked(IPancakePair(tokenAddress).symbol())) == keccak256("Cake-LP"),
             "VaultRelayer: cannot recover token");
 
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }

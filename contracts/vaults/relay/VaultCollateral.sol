@@ -33,11 +33,10 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../../library/PausableUpgradeable.sol";
-import "../../library/WhitelistUpgradeable.sol";
+import "../../library/Pausable.sol";
 import "../../library/SafeToken.sol";
 import {PoolConstant} from "../../library/PoolConstant.sol";
 
@@ -45,9 +44,10 @@ import "../../interfaces/IVaultCollateral.sol";
 
 import "../../dashboard/calculator/PriceCalculatorETH.sol";
 import "../../zap/ZapETH.sol";
+import "../../library/Whitelist.sol";
 
 
-contract VaultCollateral is IVaultCollateral, PausableUpgradeable, WhitelistUpgradeable, ReentrancyGuardUpgradeable {
+contract VaultCollateral is IVaultCollateral, Pausable, Whitelist, ReentrancyGuard {
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -99,12 +99,8 @@ contract VaultCollateral is IVaultCollateral, PausableUpgradeable, WhitelistUpgr
 
     receive() external payable {}
 
-    function initialize(address _token) external initializer {
+    constructor (address _token) public {
         require(_token != address(0), "VaultCollateral: invalid token");
-        __PausableUpgradeable_init();
-        __WhitelistUpgradeable_init();
-        __ReentrancyGuard_init();
-
         stakingToken = _token;
         collateralValueMin = 100e18;
 

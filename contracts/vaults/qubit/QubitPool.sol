@@ -35,18 +35,19 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-import "../../library/bep20/BEP20Upgradeable.sol";
 import "../../library/SafeToken.sol";
 import "../../library/PoolConstant.sol";
 import "../../interfaces/qubit/IVaultQubitBridge.sol";
-import "../../library/RewardsDistributionRecipientUpgradeable.sol";
+import "../../library/RewardsDistributionRecipient.sol";
 import "../../interfaces/qubit/IQubitPool.sol";
 import "../../interfaces/IBunnyMinterV2.sol";
 import "../../interfaces/IBunnyChef.sol";
+import "../../interfaces/IBEP20.sol";
 
-contract QubitPool is BEP20Upgradeable, IQubitPool, RewardsDistributionRecipientUpgradeable, ReentrancyGuardUpgradeable {
+contract QubitPool is ERC20, IQubitPool, RewardsDistributionRecipient, ReentrancyGuard {
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -104,11 +105,7 @@ contract QubitPool is BEP20Upgradeable, IQubitPool, RewardsDistributionRecipient
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __BEP20__init("Bunny QBT Token", "bQBT", 18);
-        __RewardsDistributionRecipient_init();
-        __ReentrancyGuard_init();
-
+    constructor() ERC20("Bunny QBT Token", "bQBT") public {
         _stakingToken = address(this);
 
         rewardsDuration = 2 hours;
@@ -199,7 +196,7 @@ contract QubitPool is BEP20Upgradeable, IQubitPool, RewardsDistributionRecipient
 
     function setQubitBridge(address newBridge) public onlyOwner {
         require(newBridge != address(0), "QubitPool: bridge must be non-zero address");
-        if (IBEP20(QBT).allowance(address(this), newBridge) == 0) {
+        if (IERC20(QBT).allowance(address(this), newBridge) == 0) {
             QBT.safeApprove(newBridge, uint(-1));
         }
         if (address(qubitBridge) != address(0)) QBT.safeApprove(address(qubitBridge), 0);
@@ -213,7 +210,7 @@ contract QubitPool is BEP20Upgradeable, IQubitPool, RewardsDistributionRecipient
         emit RewardsDurationUpdated(rewardsDuration);
     }
 
-    function notifyRewardAmount(uint reward) external override(IQubitPool, RewardsDistributionRecipientUpgradeable) onlyRewardsDistribution {
+    function notifyRewardAmount(uint reward) external override(IQubitPool, RewardsDistributionRecipient) onlyRewardsDistribution {
         _notifyRewardAmount(reward);
     }
 

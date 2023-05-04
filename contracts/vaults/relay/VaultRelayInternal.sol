@@ -34,24 +34,21 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-import "../../library/RewardsDistributionRecipientUpgradeable.sol";
+import "../../library/RewardsDistributionRecipient.sol";
 import {PoolConstant} from "../../library/PoolConstant.sol";
 
 import "../../interfaces/IStrategy.sol";
 import "../../interfaces/IMasterChef.sol";
 import "../../interfaces/IBunnyMinter.sol";
+import "../VaultController.sol";
 
-import "../../vaults/VaultController.sol";
-
-
-contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRecipientUpgradeable, ReentrancyGuardUpgradeable {
+contract VaultRelayInternal is IStrategy, RewardsDistributionRecipient, ReentrancyGuard, VaultController {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -104,12 +101,9 @@ contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRe
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(uint _pid, address _relayer) external initializer {
+    constructor (uint _pid, address _relayer) public {
         (address _token,,,) = CAKE_MASTER_CHEF.poolInfo(_pid);
-        __VaultController_init(IBEP20(_token));
-        __RewardsDistributionRecipient_init();
-        __ReentrancyGuard_init();
-
+        setStakingToken(_token);
         _stakingToken.safeApprove(address(CAKE_MASTER_CHEF), uint(- 1));
         pid = _pid;
 
@@ -232,11 +226,11 @@ contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRe
         uint reward = rewards[_to];
         if (reward > 0) {
             rewards[_to] = 0;
-            uint before = IBEP20(CAKE).balanceOf(address(this));
+            uint before = IERC20(CAKE).balanceOf(address(this));
             _rewardsToken.withdraw(reward);
-            uint cakeBalance = IBEP20(CAKE).balanceOf(address(this)).sub(before);
+            uint cakeBalance = IERC20(CAKE).balanceOf(address(this)).sub(before);
 
-            IBEP20(CAKE).safeTransfer(msg.sender, cakeBalance);
+            IERC20(CAKE).safeTransfer(msg.sender, cakeBalance);
             emit ProfitPaid(_to, cakeBalance, 0);
         }
     }
@@ -264,8 +258,8 @@ contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRe
         require(address(_rewardsToken) == address(0), "VaultRelayInternal: rewards token already set");
 
         _rewardsToken = IStrategy(newRewardsToken);
-        IBEP20(CAKE).safeApprove(newRewardsToken, 0);
-        IBEP20(CAKE).safeApprove(newRewardsToken, uint(- 1));
+        IERC20(CAKE).safeApprove(newRewardsToken, 0);
+        IERC20(CAKE).safeApprove(newRewardsToken, uint(- 1));
     }
 
     function notifyRewardAmount(uint reward) public override onlyRewardsDistribution {
@@ -285,15 +279,15 @@ contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRe
     /* ========== PRIVATE FUNCTIONS ========== */
 
     function _depositStakingToken(uint amount) private returns (uint cakeHarvested) {
-        uint before = IBEP20(CAKE).balanceOf(address(this));
+        uint before = IERC20(CAKE).balanceOf(address(this));
         CAKE_MASTER_CHEF.deposit(pid, amount);
-        cakeHarvested = IBEP20(CAKE).balanceOf(address(this)).sub(before);
+        cakeHarvested = IERC20(CAKE).balanceOf(address(this)).sub(before);
     }
 
     function _withdrawStakingToken(uint amount) private returns (uint cakeHarvested) {
-        uint before = IBEP20(CAKE).balanceOf(address(this));
+        uint before = IERC20(CAKE).balanceOf(address(this));
         CAKE_MASTER_CHEF.withdraw(pid, amount);
-        cakeHarvested = IBEP20(CAKE).balanceOf(address(this)).sub(before);
+        cakeHarvested = IERC20(CAKE).balanceOf(address(this)).sub(before);
     }
 
     function _harvest(uint cakeAmount) private {
@@ -331,13 +325,13 @@ contract VaultRelayInternal is VaultController, IStrategy, RewardsDistributionRe
 
     function recoverToken(address tokenAddress, uint tokenAmount) external override onlyOwner {
         require(tokenAddress != address(_stakingToken) && tokenAddress != _rewardsToken.stakingToken(), "VaultRelayInternal: cannot recover underlying token");
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 
     /// dev: TODO Will be removed after beta test (beta test only)
     function recoverForBetaTest(address tokenAddress, uint tokenAmount) external onlyOwner {
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }

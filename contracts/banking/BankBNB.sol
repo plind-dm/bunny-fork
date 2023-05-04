@@ -34,7 +34,7 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import "../interfaces/IBank.sol";
 import "../library/SafeToken.sol";
@@ -43,7 +43,7 @@ import "./BankBridge.sol";
 import "../vaults/venus/VaultVenus.sol";
 
 
-contract BankBNB is IBank, WhitelistUpgradeable, ReentrancyGuardUpgradeable {
+contract BankBNB is IBank, Whitelist, ReentrancyGuard {
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -94,10 +94,7 @@ contract BankBNB is IBank, WhitelistUpgradeable, ReentrancyGuardUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __ReentrancyGuard_init();
-        __WhitelistUpgradeable_init();
-
+    constructor() public {
         lastAccrueTime = block.timestamp;
     }
 

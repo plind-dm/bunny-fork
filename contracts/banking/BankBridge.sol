@@ -2,19 +2,18 @@
 pragma solidity ^0.6.12;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/IBEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../library/SafeToken.sol";
-import "../library/PausableUpgradeable.sol";
-import "../library/WhitelistUpgradeable.sol";
+import "../library/Pausable.sol";
+import "../library/Whitelist.sol";
 import "../interfaces/IPancakeRouter02.sol";
 import "../interfaces/IBank.sol";
 
 
-contract BankBridge is IBankBridge, PausableUpgradeable, WhitelistUpgradeable {
+contract BankBridge is IBankBridge, Whitelist, Pausable {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeToken for address;
 
     /* ========== CONSTANTS ============= */
@@ -37,17 +36,14 @@ contract BankBridge is IBankBridge, PausableUpgradeable, WhitelistUpgradeable {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __PausableUpgradeable_init();
-        __WhitelistUpgradeable_init();
-
+    constructor() public {
         reserveRatio = 1000;
     }
 
     /* ========== VIEW FUNCTIONS ========== */
 
     function balance() public view returns (uint) {
-        return IBEP20(ETH).balanceOf(address(this));
+        return IERC20(ETH).balanceOf(address(this));
     }
 
     /* ========== RESTRICTED FUNCTIONS ========== */
@@ -63,7 +59,7 @@ contract BankBridge is IBankBridge, PausableUpgradeable, WhitelistUpgradeable {
     }
 
     function approveETH() external onlyOwner {
-        IBEP20(ETH).approve(address(ROUTER), uint(-1));
+        IERC20(ETH).approve(address(ROUTER), uint(-1));
     }
 
     /* ========== MUTATIVE FUNCTIONS ========== */
@@ -89,7 +85,7 @@ contract BankBridge is IBankBridge, PausableUpgradeable, WhitelistUpgradeable {
         path[1] = WBNB;
 
         lossInETH = ROUTER.getAmountsIn(loss, path)[0];
-        uint ethBalance = IBEP20(ETH).balanceOf(address(this));
+        uint ethBalance = IERC20(ETH).balanceOf(address(this));
         if (ethBalance >= lossInETH) {
             uint bnbOut = ROUTER.swapTokensForExactETH(loss, lossInETH, path, address(this), block.timestamp)[1];
             SafeToken.safeTransferETH(bank, bnbOut);
@@ -104,9 +100,9 @@ contract BankBridge is IBankBridge, PausableUpgradeable, WhitelistUpgradeable {
     }
 
     function bridgeETH(address to, uint amount) external onlyWhitelisted {
-        if (IBEP20(ETH).allowance(address(this), address(to)) == 0) {
-            IBEP20(ETH).safeApprove(address(to), uint(- 1));
+        if (IERC20(ETH).allowance(address(this), address(to)) == 0) {
+            IERC20(ETH).safeApprove(address(to), uint(- 1));
         }
-        IBEP20(ETH).safeTransfer(to, amount);
+        IERC20(ETH).safeTransfer(to, amount);
     }
 }

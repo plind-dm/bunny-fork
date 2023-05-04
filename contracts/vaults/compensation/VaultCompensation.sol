@@ -33,18 +33,18 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/Math.sol";
 
-import "../../library/PausableUpgradeable.sol";
+import "../../library/Pausable.sol";
 import "../../library/SafeToken.sol";
 
 import "../../interfaces/IPriceCalculator.sol";
 
 
-contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
-    using SafeBEP20 for IBEP20;
+contract VaultCompensation is Pausable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -125,10 +125,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __PausableUpgradeable_init();
-        __ReentrancyGuard_init();
-
+    constructor() public {
         rewardsDuration = 1 days;
     }
 
@@ -199,7 +196,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
 
     function _deposit(uint _amount, address _to) private updateRewards(_to) {
         require(stakingToken != address(0), "VaultComp: staking token must be set");
-        IBEP20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
         _totalSupply = _totalSupply.add(_amount);
         _balances[_to] = _balances[_to].add(_amount);
         emit Deposited(_to, _amount);
@@ -212,7 +209,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
         }
 
         _totalSupply = _totalSupply.add(sum);
-        IBEP20(stakingToken).safeTransferFrom(msg.sender, address(this), sum);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), sum);
 
         for (uint i = 0; i < request.length; i++) {
             address to = request[i].to;
@@ -248,7 +245,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
             // very high values of rewardRate in the earned and rewardsPerToken functions;
             // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
 
-            uint _balance = rewardInfo.token == WBNB ? address(this).balance : IBEP20(rewardInfo.token).balanceOf(address(this));
+            uint _balance = rewardInfo.token == WBNB ? address(this).balance : IERC20(rewardInfo.token).balanceOf(address(this));
             require(rewardInfo.rewardRate <= _balance.div(rewardsDuration), "VaultComp: invalid rewards amount");
 
             (, uint valueInUSD) = priceCalculator.valueOfAsset(rewardInfo.token, amounts[i]);
@@ -269,7 +266,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
 
     function deposit(uint _amount) public notPaused updateRewards(msg.sender) {
         require(stakingToken != address(0), "VaultComp: staking token must be set");
-        IBEP20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(stakingToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         _totalSupply = _totalSupply.add(_amount);
         _balances[msg.sender] = _balances[msg.sender].add(_amount);
@@ -281,7 +278,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
 
         _totalSupply = _totalSupply.sub(_amount);
         _balances[msg.sender] = _balances[msg.sender].sub(_amount);
-        IBEP20(stakingToken).safeTransfer(msg.sender, _amount);
+        IERC20(stakingToken).safeTransfer(msg.sender, _amount);
         emit Withdrawn(msg.sender, _amount);
     }
 
@@ -298,7 +295,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
                     if (_rewardTokens[i] == WBNB) {
                         SafeToken.safeTransferETH(msg.sender, reward);
                     } else {
-                        IBEP20(_rewardTokens[i]).safeTransfer(msg.sender, reward);
+                        IERC20(_rewardTokens[i]).safeTransfer(msg.sender, reward);
                     }
                     emit RewardsPaid(msg.sender, _rewardTokens[i], reward);
                 }
@@ -311,7 +308,7 @@ contract VaultCompensation is PausableUpgradeable, ReentrancyGuardUpgradeable {
     function recoverToken(address _token, uint amount) external onlyOwner {
         require(stakingToken != address(0), "VaultComp: staking token must be set");
         require(_token != address(stakingToken), "VaultComp: cannot recover underlying token");
-        IBEP20(_token).safeTransfer(owner(), amount);
+        IERC20(_token).safeTransfer(owner(), amount);
         emit Recovered(_token, amount);
     }
 }

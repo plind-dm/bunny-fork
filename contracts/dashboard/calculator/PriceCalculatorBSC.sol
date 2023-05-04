@@ -34,8 +34,8 @@ pragma experimental ABIEncoderV2;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/IBEP20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../interfaces/IPancakePair.sol";
 import "../../interfaces/IPancakeFactory.sol";
@@ -44,7 +44,7 @@ import "../../interfaces/IPriceCalculator.sol";
 import "../../library/HomoraMath.sol";
 
 
-contract PriceCalculatorBSC is IPriceCalculator, OwnableUpgradeable {
+contract PriceCalculatorBSC is IPriceCalculator, Ownable {
     using SafeMath for uint;
     using HomoraMath for uint;
 
@@ -76,8 +76,7 @@ contract PriceCalculatorBSC is IPriceCalculator, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public Ownable() {
         setPairToken(VAI, BUSD);
     }
 
@@ -165,7 +164,7 @@ contract PriceCalculatorBSC is IPriceCalculator, OwnableUpgradeable {
         else {
             address pairToken = pairTokens[asset] == address(0) ? WBNB : pairTokens[asset];
             address pair = factory.getPair(asset, pairToken);
-            if (IBEP20(asset).balanceOf(pair) == 0) return (0, 0);
+            if (IERC20(asset).balanceOf(pair) == 0) return (0, 0);
 
             (uint reserve0, uint reserve1, ) = IPancakePair(pair).getReserves();
             if (IPancakePair(pair).token0() == pairToken) {

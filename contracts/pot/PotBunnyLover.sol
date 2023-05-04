@@ -35,8 +35,8 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import {PotConstant} from "../library/PotConstant.sol";
@@ -50,18 +50,20 @@ import "../interfaces/legacy/IStrategyLegacy.sol";
 import "../vaults/VaultController.sol";
 
 import "./PotController.sol";
+import "../interfaces/IBEP20.sol";
 
 contract PotBunnyLover is VaultController, PotController {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANT ========== */
 
     address public constant TIMELOCK_ADDRESS = 0x85c9162A51E03078bdCd08D4232Bab13ed414cC3;
 
-    IBEP20 private constant BUNNY = IBEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
-    IBEP20 private constant WBNB = IBEP20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
-    IBEP20 private constant CAKE = IBEP20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
+    IERC20 private constant BUNNY = IERC20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
+    IERC20 private constant WBNB = IERC20(0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c);
+    IERC20 private constant CAKE = IERC20(0x0E09FaBB73Bd3Ade0a17ECC321fD13a19e81cE82);
     IPriceCalculator private constant priceCalculator = IPriceCalculator(0xF5BF8A9249e3cc4cB684E3f23db9669323d4FB7d);
     IZap private constant ZapBSC = IZap(0xdC2bBB0D33E0e7Dea9F5b98F46EDBaC823586a0C);
     IStrategyLegacy private constant BUNNYPool = IStrategyLegacy(0xCADc8CB26c8C7cB46500E61171b5F27e9bd7889D);
@@ -124,11 +126,9 @@ contract PotBunnyLover is VaultController, PotController {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __VaultController_init(BUNNY);
-
+    constructor() public {
         _stakingToken.safeApprove(address(ZapBSC), uint(-1));
-
+        setStakingToken(address(BUNNY));
         burnRatio = 10;
         state = PotConstant.PotState.Cooked;
         _boostDuration = 4 hours;
@@ -486,7 +486,7 @@ contract PotBunnyLover is VaultController, PotController {
     function migrate() external onlyOwner {
         require(_bunnyPool != address(0), "PotBunnyLover: must set BunnyPool");
         uint before = BUNNY.balanceOf(address(this));
-        uint beforeWBNB = IBEP20(WBNB).balanceOf(address(this));
+        uint beforeWBNB = IERC20(WBNB).balanceOf(address(this));
 
         BUNNYPool.withdrawAll();
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../library/SafeToken.sol";
 import "../../library/Whitelist.sol";
@@ -17,7 +17,7 @@ import "../../interfaces/IVToken.sol";
 
 contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeToken for address;
 
     /* ========== CONSTANTS ============= */
@@ -26,7 +26,7 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
     IVenusDistribution private constant VENUS_UNITROLLER = IVenusDistribution(0xfD36E2c2a6789Db23113685031d7F16329158384);
 
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    IBEP20 private constant XVS = IBEP20(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
+    IERC20 private constant XVS = IERC20(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
     IVBNB public constant vBNB = IVBNB(0xA07c5b74C9B40447a954e1466938b865b6BBea36);
 
     /* ========== STATE VARIABLES ========== */
@@ -42,13 +42,13 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
 
     modifier updateAvailable(address vault) {
         MarketInfo storage market = markets[vault];
-        uint tokenBalanceBefore = market.token != WBNB ? IBEP20(market.token).balanceOf(address(this)) : address(this).balance;
-        uint vTokenAmountBefore = IBEP20(market.vToken).balanceOf(address(this));
+        uint tokenBalanceBefore = market.token != WBNB ? IERC20(market.token).balanceOf(address(this)) : address(this).balance;
+        uint vTokenAmountBefore = IERC20(market.vToken).balanceOf(address(this));
 
         _;
 
-        uint tokenBalance = market.token != WBNB ? IBEP20(market.token).balanceOf(address(this)) : address(this).balance;
-        uint vTokenAmount = IBEP20(market.vToken).balanceOf(address(this));
+        uint tokenBalance = market.token != WBNB ? IERC20(market.token).balanceOf(address(this)) : address(this).balance;
+        uint vTokenAmount = IERC20(market.vToken).balanceOf(address(this));
         market.available = market.available.add(tokenBalance).sub(tokenBalanceBefore);
         market.vTokenAmount = market.vTokenAmount.add(vTokenAmount).sub(vTokenAmountBefore);
     }
@@ -81,8 +81,8 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
         _marketList.push(market);
         markets[vault] = market;
 
-        IBEP20(token).safeApprove(address(PANCAKE_ROUTER), uint(- 1));
-        IBEP20(token).safeApprove(vToken, uint(- 1));
+        IERC20(token).safeApprove(address(PANCAKE_ROUTER), uint(- 1));
+        IERC20(token).safeApprove(vToken, uint(- 1));
 
         address[] memory venusMarkets = new address[](1);
         venusMarkets[0] = vToken;
@@ -96,7 +96,7 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
         if (market.token == WBNB) {
             newBridge.deposit{value : market.available}(msg.sender, market.available);
         } else {
-            IBEP20 token = IBEP20(market.token);
+            IERC20 token = IERC20(market.token);
             token.safeApprove(address(newBridge), uint(- 1));
             token.safeTransfer(address(newBridge), market.available);
             token.safeApprove(address(newBridge), 0);
@@ -117,7 +117,7 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
         if (market.token == WBNB) {
             SafeToken.safeTransferETH(account, amount);
         } else {
-            IBEP20(market.token).safeTransfer(account, amount);
+            IERC20(market.token).safeTransfer(account, amount);
         }
     }
 
@@ -195,8 +195,8 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
 
     function recoverToken(address token, uint amount) external onlyOwner {
         // case0) WBNB salvage
-        if (token == WBNB && IBEP20(WBNB).balanceOf(address(this)) >= amount) {
-            IBEP20(token).safeTransfer(owner(), amount);
+        if (token == WBNB && IERC20(WBNB).balanceOf(address(this)) >= amount) {
+            IERC20(token).safeTransfer(owner(), amount);
             emit Recovered(token, amount);
             return;
         }
@@ -210,13 +210,13 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
             }
 
             if (market.token == token) {
-                uint balance = token == WBNB ? address(this).balance : IBEP20(token).balanceOf(address(this));
+                uint balance = token == WBNB ? address(this).balance : IERC20(token).balanceOf(address(this));
                 require(balance.sub(market.available) >= amount, "VaultVenusBridge: cannot recover");
 
                 if (token == WBNB) {
                     SafeToken.safeTransferETH(owner(), amount);
                 } else {
-                    IBEP20(token).safeTransfer(owner(), amount);
+                    IERC20(token).safeTransfer(owner(), amount);
                 }
 
                 emit Recovered(token, amount);
@@ -225,7 +225,7 @@ contract VaultVenusBridge is Whitelist, Exponential, IVaultVenusBridge {
         }
 
         // case2) not vault token
-        IBEP20(token).safeTransfer(owner(), amount);
+        IERC20(token).safeTransfer(owner(), amount);
         emit Recovered(token, amount);
     }
 }

@@ -34,23 +34,22 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.2;
 
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 
-abstract contract PausableUpgradeable is OwnableUpgradeable {
+abstract contract Pausable is Ownable {
     uint public lastPauseTime;
     bool public paused;
 
     event PauseChanged(bool isPaused);
 
     modifier notPaused {
-        require(!paused, "PausableUpgradeable: cannot be performed while the contract is paused");
+        require(!paused, "Pausable: cannot be performed while the contract is paused");
         _;
     }
 
-    function __PausableUpgradeable_init() internal initializer {
-        __Ownable_init();
-        require(owner() != address(0), "PausableUpgradeable: owner must be set");
+    constructor() public {
+        require(owner() != address(0), "Pausable: owner must be set");
     }
 
     function setPaused(bool _paused) external onlyOwner {

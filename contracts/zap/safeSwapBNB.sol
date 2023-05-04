@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.12;
 
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/BEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 import "../library/SafeToken.sol";
 import "../interfaces/IWETH.sol";
 
 contract safeSwapBNB {
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     /* ========== CONSTANTS ============= */
@@ -26,9 +26,9 @@ contract safeSwapBNB {
     /* ========== FUNCTIONS ========== */
 
     function withdraw(uint amount) external {
-        require(IBEP20(WBNB).balanceOf(msg.sender) >= amount, "Not enough Tokens!");
+        require(IERC20(WBNB).balanceOf(msg.sender) >= amount, "Not enough Tokens!");
 
-        IBEP20(WBNB).transferFrom(msg.sender, address(this), amount);
+        IERC20(WBNB).transferFrom(msg.sender, address(this), amount);
 
         IWETH(WBNB).withdraw(amount);
 

@@ -35,10 +35,10 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 
 import "../../library/SafeToken.sol";
-import "../../library/WhitelistUpgradeable.sol";
+import "../../library/Whitelist.sol";
 
 import "../../interfaces/IPancakeRouter02.sol";
 import "../../interfaces/qubit/IQDistributor.sol";
@@ -51,9 +51,9 @@ import "../../interfaces/IWETH.sol";
 
 import "../../interfaces/IPriceCalculator.sol";
 
-contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
+contract VaultQubitBridge is Whitelist, IVaultQubitBridge {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeToken for address;
 
     /* ========== CONSTANTS ============= */
@@ -65,7 +65,7 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
     IQore private constant QORE = IQore(0xF70314eb9c7Fe7D88E6af5aa7F898b3A162dcd48);
 
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    IBEP20 private constant QBT = IBEP20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
+    IERC20 private constant QBT = IERC20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
 
     uint public constant LOCKING_DURATION = 2 * 365 days;
 
@@ -85,11 +85,11 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
 
     modifier updateAvailable(address vault) {
         MarketInfo storage market = markets[vault];
-        uint tokenBalanceBefore = market.token != WBNB ? IBEP20(market.token).balanceOf(address(this)) : address(this).balance;
+        uint tokenBalanceBefore = market.token != WBNB ? IERC20(market.token).balanceOf(address(this)) : address(this).balance;
         uint qTokenAmountBefore = IQToken(market.qToken).balanceOf(address(this));
         _;
 
-        uint tokenBalance = market.token != WBNB ? IBEP20(market.token).balanceOf(address(this)) : address(this).balance;
+        uint tokenBalance = market.token != WBNB ? IERC20(market.token).balanceOf(address(this)) : address(this).balance;
         uint qTokenAmount = IQToken(market.qToken).balanceOf(address(this));
 
         market.available = market.available.add(tokenBalance).sub(tokenBalanceBefore);
@@ -100,9 +100,7 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __WhitelistUpgradeable_init();
-
+    constructor() public {
         QBT.safeApprove(address(PANCAKE_ROUTER), uint(-1));
         QBT.safeApprove(address(QUBIT_LOCKER), uint(-1));
 
@@ -178,9 +176,9 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
 
         // QBT is already approved at initialization
         if (token != address(QBT)) {
-            IBEP20(token).safeApprove(address(PANCAKE_ROUTER), uint(-1));
+            IERC20(token).safeApprove(address(PANCAKE_ROUTER), uint(-1));
         }
-        IBEP20(token).safeApprove(qToken, uint(-1));
+        IERC20(token).safeApprove(qToken, uint(-1));
         QBT.safeApprove(vault, uint(-1));
 
         address[] memory qubitMarkets = new address[](1);
@@ -211,7 +209,7 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
         if (market.token == WBNB) {
             SafeToken.safeTransferETH(to, amount);
         } else {
-            IBEP20(market.token).safeTransfer(to, amount);
+            IERC20(market.token).safeTransfer(to, amount);
         }
     }
 
@@ -369,8 +367,8 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
 
     function recoverToken(address token, uint amount) external onlyOwner {
         // case0) WBNB salvage
-        if (token == WBNB && IBEP20(WBNB).balanceOf(address(this)) >= amount) {
-            IBEP20(token).safeTransfer(owner(), amount);
+        if (token == WBNB && IERC20(WBNB).balanceOf(address(this)) >= amount) {
+            IERC20(token).safeTransfer(owner(), amount);
             emit Recovered(token, amount);
             return;
         }
@@ -384,13 +382,13 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
             }
 
             if (market.token == token) {
-                uint balance = token == WBNB ? address(this).balance : IBEP20(token).balanceOf(address(this));
+                uint balance = token == WBNB ? address(this).balance : IERC20(token).balanceOf(address(this));
                 require(balance.sub(market.available) >= amount, "VaultQubitBridge: cannot recover");
 
                 if (token == WBNB) {
                     SafeToken.safeTransferETH(owner(), amount);
                 } else {
-                    IBEP20(token).safeTransfer(owner(), amount);
+                    IERC20(token).safeTransfer(owner(), amount);
                 }
 
                 emit Recovered(token, amount);
@@ -399,7 +397,7 @@ contract VaultQubitBridge is WhitelistUpgradeable, IVaultQubitBridge {
         }
 
         // case2) not vault token
-        IBEP20(token).safeTransfer(owner(), amount);
+        IERC20(token).safeTransfer(owner(), amount);
         emit Recovered(token, amount);
     }
 }

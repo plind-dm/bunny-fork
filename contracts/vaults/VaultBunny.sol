@@ -34,10 +34,9 @@ pragma experimental ABIEncoderV2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
 import "../interfaces/IStrategy.sol";
 import "../interfaces/IBunnyMinter.sol";
@@ -46,9 +45,9 @@ import "./VaultController.sol";
 import {PoolConstant} from "../library/PoolConstant.sol";
 
 
-contract VaultBunny is VaultController, IStrategy, ReentrancyGuardUpgradeable {
+contract VaultBunny is VaultController, IStrategy, ReentrancyGuard {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
@@ -64,9 +63,8 @@ contract VaultBunny is VaultController, IStrategy, ReentrancyGuardUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __VaultController_init(IBEP20(BUNNY));
-        __ReentrancyGuard_init();
+    constructor() public {
+        setStakingToken(BUNNY);
     }
 
     /* ========== VIEWS ========== */
@@ -188,7 +186,7 @@ contract VaultBunny is VaultController, IStrategy, ReentrancyGuardUpgradeable {
 
     function recoverToken(address tokenAddress, uint tokenAmount) external override onlyOwner {
         require(tokenAddress != address(_stakingToken), "VaultBunny: cannot recover underlying token");
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }

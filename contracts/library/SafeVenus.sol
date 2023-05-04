@@ -33,9 +33,9 @@ pragma solidity ^0.6.2;
 */
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/IBEP20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./SafeDecimal.sol";
 import "../interfaces/IPriceCalculator.sol";
@@ -47,7 +47,7 @@ import "../interfaces/IVaultVenusBridge.sol";
 import "../vaults/venus/VaultVenus.sol";
 
 
-contract SafeVenus is OwnableUpgradeable {
+contract SafeVenus is Ownable {
     using SafeMath for uint;
     using SafeDecimal for uint;
 
@@ -59,8 +59,7 @@ contract SafeVenus is OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public Ownable() {
     }
 
     function valueOfUnderlying(IVToken vToken, uint amount) internal view returns (uint) {

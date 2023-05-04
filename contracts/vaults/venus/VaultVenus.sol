@@ -34,10 +34,9 @@ pragma experimental ABIEncoderV2;
 * SOFTWARE.
 */
 
-import "@openzeppelin/contracts/math/Math.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../../library/PausableUpgradeable.sol";
+import "../../library/Pausable.sol";
 import "../../library/SafeToken.sol";
 import "../../library/SafeVenus.sol";
 
@@ -46,12 +45,12 @@ import "../../interfaces/IVToken.sol";
 import "../../interfaces/IVenusDistribution.sol";
 import "../../interfaces/IVaultVenusBridge.sol";
 import "../../interfaces/IBank.sol";
-import "../VaultController.sol";
-import "./VaultVenusBridgeOwner.sol";
 import "../../interfaces/qubit/IVaultQubit.sol";
 import "../../interfaces/IVaultVenus.sol";
+import "../VaultController.sol";
+import "./VaultVenusBridgeOwner.sol";
 
-contract VaultVenus is VaultController, IVaultVenus, ReentrancyGuardUpgradeable {
+contract VaultVenus is VaultController, IVaultVenus, ReentrancyGuard {
     using SafeMath for uint;
     using SafeToken for address;
 
@@ -126,11 +125,9 @@ contract VaultVenus is VaultController, IVaultVenus, ReentrancyGuardUpgradeable 
 
     receive() external payable {}
 
-    function initialize(address _token, address _vToken) external initializer {
+    constructor(address _token, address _vToken) public {
         require(_token != address(0), "VaultVenus: invalid token");
-        __VaultController_init(IBEP20(_token));
-        __ReentrancyGuard_init();
-
+        setStakingToken(_token);
         vToken = IVToken(_vToken);
 
         (, uint collateralFactorMantissa,) = VENUS_UNITROLLER.markets(_vToken);
@@ -680,7 +677,7 @@ contract VaultVenus is VaultController, IVaultVenus, ReentrancyGuardUpgradeable 
         require(tokenAddress != address(0) && tokenAddress != address(_stakingToken) &&
         tokenAddress != address(vToken) && tokenAddress != XVS, "VaultVenus: cannot recover token");
 
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }

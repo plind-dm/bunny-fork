@@ -3,12 +3,12 @@ pragma solidity ^0.6.12;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/Math.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import "../library/legacy/RewardsDistributionRecipient.sol";
-import "../library/legacy/Pausable.sol";
+import "../library/RewardsDistributionRecipient.sol";
+import "../library/Pausable.sol";
 import "../interfaces/legacy/IStrategyHelper.sol";
 import "../interfaces/IPancakeRouter02.sol";
 import "../interfaces/legacy/IStrategyLegacy.sol";
@@ -20,12 +20,12 @@ interface IPresale {
 
 contract BunnyPool is IStrategyLegacy, RewardsDistributionRecipient, ReentrancyGuard, Pausable {
     using SafeMath for uint256;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
 
-    IBEP20 public rewardsToken; // bunny/bnb flip
-    IBEP20 public constant stakingToken = IBEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);   // bunny
+    IERC20 public rewardsToken; // bunny/bnb flip
+    IERC20 public constant stakingToken = IERC20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);   // bunny
     uint256 public periodFinish = 0;
     uint256 public rewardRate = 0;
     uint256 public rewardsDuration = 90 days;
@@ -196,7 +196,7 @@ contract BunnyPool is IStrategyLegacy, RewardsDistributionRecipient, ReentrancyG
         if (reward > 0) {
             rewards[msg.sender] = 0;
             reward = _flipToWBNB(reward);
-            IBEP20(ROUTER_V1_DEPRECATED.WETH()).safeTransfer(msg.sender, reward);
+            IERC20(ROUTER_V1_DEPRECATED.WETH()).safeTransfer(msg.sender, reward);
             emit RewardPaid(msg.sender, reward);
         }
     }
@@ -211,7 +211,7 @@ contract BunnyPool is IStrategyLegacy, RewardsDistributionRecipient, ReentrancyG
         path[1] = wbnb;
         ROUTER_V1_DEPRECATED.swapExactTokensForTokens(rewardBunny, 0, path, address(this), block.timestamp);
 
-        reward = IBEP20(wbnb).balanceOf(address(this));
+        reward = IERC20(wbnb).balanceOf(address(this));
     }
 
     function harvest() override external {}
@@ -246,8 +246,8 @@ contract BunnyPool is IStrategyLegacy, RewardsDistributionRecipient, ReentrancyG
     function setRewardsToken(address _rewardsToken) external onlyOwner {
         require(address(rewardsToken) == address(0), "set rewards token already");
 
-        rewardsToken = IBEP20(_rewardsToken);
-        IBEP20(_rewardsToken).safeApprove(address(ROUTER_V1_DEPRECATED), uint(- 1));
+        rewardsToken = IERC20(_rewardsToken);
+        IERC20(_rewardsToken).safeApprove(address(ROUTER_V1_DEPRECATED), uint(- 1));
     }
 
     function setHelper(IStrategyHelper _helper) external onlyOwner {
@@ -287,9 +287,9 @@ contract BunnyPool is IStrategyLegacy, RewardsDistributionRecipient, ReentrancyG
         emit RewardAdded(reward);
     }
 
-    function recoverBEP20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
+    function recoverERC20(address tokenAddress, uint256 tokenAmount) external onlyOwner {
         require(tokenAddress != address(stakingToken) && tokenAddress != address(rewardsToken), "tokenAddress");
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 

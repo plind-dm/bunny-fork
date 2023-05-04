@@ -36,7 +36,7 @@ pragma experimental ABIEncoderV2;
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../../interfaces/IUniswapV2Pair.sol";
 import "../../interfaces/IUniswapV2Factory.sol";
@@ -45,7 +45,7 @@ import "../../interfaces/IPriceCalculator.sol";
 import "../../library/HomoraMath.sol";
 
 
-contract PriceCalculatorETH is IPriceCalculator, OwnableUpgradeable {
+contract PriceCalculatorETH is IPriceCalculator, Ownable {
     using SafeMath for uint;
     using HomoraMath for uint;
 
@@ -62,8 +62,7 @@ contract PriceCalculatorETH is IPriceCalculator, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public {
     }
 
     /* ========== Restricted Operation ========== */

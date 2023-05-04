@@ -34,7 +34,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.6.2;
 
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 
 
 library SafeDecimal {

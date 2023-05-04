@@ -33,18 +33,18 @@ pragma solidity ^0.6.12;
 * SOFTWARE.
 */
 
-import "@pancakeswap/pancake-swap-lib/contracts/math/SafeMath.sol";
-import "@pancakeswap/pancake-swap-lib/contracts/token/BEP20/SafeBEP20.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../interfaces/IPancakePair.sol";
 import "../interfaces/IPancakeRouter02.sol";
 import "../interfaces/IZap.sol";
 import "../interfaces/ISafeSwapBNB.sol";
 
-contract ZapBSC is IZap, OwnableUpgradeable {
+contract ZapBSC is IZap, Ownable {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANT VARIABLES ========== */
 
@@ -71,8 +71,7 @@ contract ZapBSC is IZap, OwnableUpgradeable {
 
     /* ========== INITIALIZER ========== */
 
-    function initialize() external initializer {
-        __Ownable_init();
+    constructor() public {
         require(owner() != address(0), "Zap: owner must be set");
 
         setNotFlip(CAKE);
@@ -108,7 +107,7 @@ contract ZapBSC is IZap, OwnableUpgradeable {
     /* ========== External Functions ========== */
 
     function zapInToken(address _from, uint amount, address _to) external override {
-        IBEP20(_from).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from);
 
         if (isFlip(_to)) {
@@ -137,7 +136,7 @@ contract ZapBSC is IZap, OwnableUpgradeable {
     }
 
     function zapOut(address _from, uint amount) external override {
-        IBEP20(_from).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(_from).safeTransferFrom(msg.sender, address(this), amount);
         _approveTokenIfNeeded(_from);
 
         if (!isFlip(_from)) {
@@ -162,8 +161,8 @@ contract ZapBSC is IZap, OwnableUpgradeable {
     /* ========== Private Functions ========== */
 
     function _approveTokenIfNeeded(address token) private {
-        if (IBEP20(token).allowance(address(this), address(ROUTER)) == 0) {
-            IBEP20(token).safeApprove(address(ROUTER), uint(- 1));
+        if (IERC20(token).allowance(address(this), address(ROUTER)) == 0) {
+            IERC20(token).safeApprove(address(ROUTER), uint(- 1));
         }
     }
 
@@ -296,7 +295,7 @@ contract ZapBSC is IZap, OwnableUpgradeable {
     }
 
     function _safeSwapToBNB(uint amount) private returns (uint) {
-        require(IBEP20(WBNB).balanceOf(address(this)) >= amount, "Zap: Not enough WBNB balance");
+        require(IERC20(WBNB).balanceOf(address(this)) >= amount, "Zap: Not enough WBNB balance");
         require(safeSwapBNB != address(0), "Zap: safeSwapBNB is not set");
         uint beforeBNB = address(this).balance;
         ISafeSwapBNB(safeSwapBNB).withdraw(amount);
@@ -328,7 +327,7 @@ contract ZapBSC is IZap, OwnableUpgradeable {
         for (uint i = 0; i < tokens.length; i++) {
             address token = tokens[i];
             if (token == address(0)) continue;
-            uint amount = IBEP20(token).balanceOf(address(this));
+            uint amount = IERC20(token).balanceOf(address(this));
             if (amount > 0) {
                 _swapTokenForBNB(token, amount, owner());
             }
@@ -341,12 +340,12 @@ contract ZapBSC is IZap, OwnableUpgradeable {
             return;
         }
 
-        IBEP20(token).transfer(owner(), IBEP20(token).balanceOf(address(this)));
+        IERC20(token).transfer(owner(), IERC20(token).balanceOf(address(this)));
     }
 
     function setSafeSwapBNB(address _safeSwapBNB) external onlyOwner {
         require(safeSwapBNB == address(0), "Zap: safeSwapBNB already set!");
         safeSwapBNB = _safeSwapBNB;
-        IBEP20(WBNB).approve(_safeSwapBNB, uint(-1));
+        IERC20(WBNB).approve(_safeSwapBNB, uint(-1));
     }
 }

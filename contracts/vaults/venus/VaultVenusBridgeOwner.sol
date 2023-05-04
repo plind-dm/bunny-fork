@@ -33,7 +33,7 @@ pragma experimental ABIEncoderV2;
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 */
 
-import "../../library/WhitelistUpgradeable.sol";
+import "../../library/Whitelist.sol";
 import "../../library/SafeToken.sol";
 
 import "../../interfaces/IPancakeRouter02.sol";
@@ -41,9 +41,9 @@ import "../../interfaces/IVenusDistribution.sol";
 import "./VaultVenusBridge.sol";
 
 
-contract VaultVenusBridgeOwner is WhitelistUpgradeable {
+contract VaultVenusBridgeOwner is Whitelist {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
     using SafeToken for address;
 
     /* ========== CONSTANTS ============= */
@@ -53,14 +53,13 @@ contract VaultVenusBridgeOwner is WhitelistUpgradeable {
     VaultVenusBridge private constant VENUS_BRIDGE = VaultVenusBridge(0x8123cAFca48b37E0F4936B2388D6B8a29F8f0Da5);
 
     address private constant WBNB = 0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c;
-    IBEP20 private constant XVS = IBEP20(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
+    IERC20 private constant XVS = IERC20(0xcF6BB5389c92Bdda8a3747Ddb454cB7a64626C63);
 
     /* ========== INITIALIZER ========== */
 
     receive() external payable {}
 
-    function initialize() external initializer {
-        __WhitelistUpgradeable_init();
+    constructor() public {
         XVS.safeApprove(address(PANCAKE_ROUTER), uint(- 1));
     }
 
@@ -83,7 +82,7 @@ contract VaultVenusBridgeOwner is WhitelistUpgradeable {
             amount = msg.value;
             VENUS_BRIDGE.deposit{value : amount}(vault, amount);
         } else {
-            IBEP20(market.token).safeTransferFrom(owner(), address(VENUS_BRIDGE), amount);
+            IERC20(market.token).safeTransferFrom(owner(), address(VENUS_BRIDGE), amount);
             VENUS_BRIDGE.deposit(vault, amount);
         }
     }
@@ -109,15 +108,15 @@ contract VaultVenusBridgeOwner is WhitelistUpgradeable {
                 uint swapAmount = address(this).balance.sub(swapBefore);
                 VENUS_BRIDGE.deposit{value : swapAmount}(vault, swapAmount);
             } else {
-                uint swapBefore = IBEP20(market.token).balanceOf(address(this));
+                uint swapBefore = IERC20(market.token).balanceOf(address(this));
                 address[] memory path = new address[](3);
                 path[0] = address(XVS);
                 path[1] = WBNB;
                 path[2] = market.token;
                 PANCAKE_ROUTER.swapExactTokensForTokens(xvsBalance, 0, path, address(this), block.timestamp);
 
-                uint swapAmount = IBEP20(market.token).balanceOf(address(this)).sub(swapBefore);
-                IBEP20(market.token).safeTransfer(address(VENUS_BRIDGE), swapAmount);
+                uint swapAmount = IERC20(market.token).balanceOf(address(this)).sub(swapBefore);
+                IERC20(market.token).safeTransfer(address(VENUS_BRIDGE), swapAmount);
                 VENUS_BRIDGE.deposit(vault, swapAmount);
             }
         }

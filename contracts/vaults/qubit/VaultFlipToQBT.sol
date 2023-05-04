@@ -36,24 +36,23 @@ pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/math/Math.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
 
-import "../../library/RewardsDistributionRecipientUpgradeable.sol";
+import "../../library/RewardsDistributionRecipient.sol";
 import "../../interfaces/qubit/IRewardDistributed.sol";
 import "../../library/PoolConstant.sol";
 import "../VaultController.sol";
+import "../../interfaces/IBEP20.sol";
 
-
-contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistributionRecipientUpgradeable, ReentrancyGuardUpgradeable {
+contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistributionRecipient, ReentrancyGuard {
     using SafeMath for uint;
-    using SafeBEP20 for IBEP20;
+    using SafeERC20 for IERC20;
 
     /* ========== CONSTANTS ============= */
 
     uint public constant pid = 9999;
     PoolConstant.PoolTypes public constant poolType = PoolConstant.PoolTypes.flipToQBT;
 
-    IBEP20 private constant QBT = IBEP20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
+    IERC20 private constant QBT = IERC20(0x17B7163cf1Dbd286E262ddc68b553D899B93f526);
     IBEP20 private constant BUNNY = IBEP20(0xC9849E6fdB743d08fAeE3E34dd2D1bc69EA11a51);
 
     uint private constant DUST = 1000;
@@ -98,11 +97,8 @@ contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistribut
 
     /* ========== INITIALIZER ========== */
 
-    function initialize(address stakingToken) external initializer {
-        __VaultController_init(IBEP20(stakingToken));
-        __RewardsDistributionRecipient_init();
-        __ReentrancyGuard_init();
-
+    constructor (address stakingToken) public {
+        setStakingToken(stakingToken);
         rewardsDuration = 2 hours;
         rewardsDistribution = msg.sender;
 
@@ -207,7 +203,7 @@ contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistribut
                 _minter.mintForV2(_rewardsToken, 0, performanceFee, msg.sender, _depositedAt[msg.sender]);
             }
 
-            IBEP20(QBT).safeTransfer(msg.sender, reward.sub(performanceFee));
+            IERC20(QBT).safeTransfer(msg.sender, reward.sub(performanceFee));
             emit ProfitPaid(msg.sender, reward.sub(performanceFee), performanceFee);
         }
     }
@@ -227,7 +223,7 @@ contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistribut
         _minter = IBunnyMinterV2(newMinter);
     }
 
-    function notifyRewardAmount(uint reward) public override(IRewardDistributed, RewardsDistributionRecipientUpgradeable) onlyRewardsDistribution {
+    function notifyRewardAmount(uint reward) public override(IRewardDistributed, RewardsDistributionRecipient) onlyRewardsDistribution {
         _notifyRewardAmount(reward);
     }
 
@@ -266,7 +262,7 @@ contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistribut
         // This keeps the reward rate in the right range, preventing overflows due to
         // very high values of rewardRate in the earned and rewardsPerToken functions;
         // Reward + leftover must be less than 2^256 / 10^18 to avoid overflow.
-        uint _balance = IBEP20(_rewardsToken).balanceOf(address(this));
+        uint _balance = IERC20(_rewardsToken).balanceOf(address(this));
         require(rewardRate <= _balance.div(rewardsDuration), "VaultFlipToQBT: reward rate must be in the right range");
 
         lastUpdateTime = block.timestamp;
@@ -279,7 +275,7 @@ contract VaultFlipToQBT is VaultController, IRewardDistributed, RewardsDistribut
     function recoverToken(address tokenAddress, uint tokenAmount) external override onlyOwner {
         require(tokenAddress != address(_stakingToken), "VaultFlipToQBT: cannot recover underlying token");
 
-        IBEP20(tokenAddress).safeTransfer(owner(), tokenAmount);
+        IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
         emit Recovered(tokenAddress, tokenAmount);
     }
 }
